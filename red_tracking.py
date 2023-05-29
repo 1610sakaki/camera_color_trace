@@ -16,6 +16,9 @@ class ObjectTracker:
         # track座標の色
         self.tracking_color = (0, 255, 0)
 
+        # 赤色面積の閾値割合
+        self.red_ratio_threshold = 0.9
+
         # カメラのキャプチャを開始
         self.cap = cv2.VideoCapture(0)
 
@@ -114,7 +117,7 @@ class ObjectTracker:
                     else:
                         direction = "Right"
                     # 重心が四角形の中に収まっていれば direction を "Straight" に設定
-                    if red_ratio > 0.9:
+                    if red_ratio > self.red_ratio_threshold:
                         direction = "stop"
                     elif (
                         square_x < cX < square_x + square_size
