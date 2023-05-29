@@ -20,7 +20,7 @@ class ObjectTracker:
         self.cap = cv2.VideoCapture(0)
 
     def frame_draw(self, frame_height, frame_width):
-        # 横:縦 = 16:9の四角形を描画
+        # 四角形を描画
         self.rect_width = frame_height * 16 // 9
         self.rect_height = frame_height
         self.rect_x = frame_width // 2 - self.rect_width // 2
@@ -30,7 +30,11 @@ class ObjectTracker:
     def tracking(self):
         while True:
             # フレームをキャプチャ
-            ret, frame = self.cap.read()
+            _, frame = self.cap.read()
+
+            # 画面中央と重心の位置を比較して、方向を決定
+            frame_height, frame_width = frame.shape[:2]
+            self.frame_draw(frame_height, frame_width)
 
             # フレームをHSV色空間に変換
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -52,15 +56,6 @@ class ObjectTracker:
                     # 輪郭の重心を計算
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
-
-                    # 画面中央と重心の位置を比較して、方向を決定
-                    frame_height, frame_width = frame.shape[:2]
-                    if cX < frame_width // 2:
-                        direction = "Left"
-                    else:
-                        direction = "Right"
-
-                    self.frame_draw(frame_height, frame_width)
 
                     # 重心を示す円を描画
                     cv2.circle(frame, (cX, cY), 5, self.tracking_color, -1)
@@ -94,8 +89,34 @@ class ObjectTracker:
                         self.center_color,
                         self.rect_thickness,
                     )
+                    # 正方形の領域を切り出す
+                    square_region = hsv[
+                        square_y : square_y + square_size,
+                        square_x : square_x + square_size,
+                        :,
+                    ]
+                    # 赤色の範囲に絞り込むマスクを作成
+                    mask = cv2.inRange(square_region, self.lower_red, self.upper_red)
+
+                    # 赤色のピクセル数を計算
+                    red_pixels = np.sum(mask == 255)
+
+                    # 正方形の総ピクセル数を計算
+                    total_pixels = square_size * square_size
+
+                    # 赤色の割合を計算
+                    red_ratio = red_pixels / total_pixels
+
+                    print("赤色の割合:", red_ratio)
+
+                    if cX < frame_width // 2:
+                        direction = "Left"
+                    else:
+                        direction = "Right"
                     # 重心が四角形の中に収まっていれば direction を "Straight" に設定
-                    if (
+                    if red_ratio > 0.9:
+                        direction = "stop"
+                    elif (
                         square_x < cX < square_x + square_size
                         and square_y < cY < square_y + square_size
                     ):
