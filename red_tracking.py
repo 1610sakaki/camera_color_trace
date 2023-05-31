@@ -54,14 +54,12 @@ class ObjectTracker:
             if len(contours) > 0:
                 max_contour = max(contours, key=cv2.contourArea)
                 M = cv2.moments(max_contour)
+                print("max_contour:", max_contour, "M:", M["m00"])
 
                 if M["m00"] > 0:
                     # 輪郭の重心を計算
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
-
-                    # 重心を示す円を描画
-                    cv2.circle(frame, (cX, cY), 5, self.tracking_color, -1)
 
                     # 中心座標に線を描画
                     # 縦線
@@ -112,32 +110,38 @@ class ObjectTracker:
 
                     print("赤色の割合:", red_ratio)
 
-                    if cX < frame_width // 2:
-                        direction = "Left"
+                    if M["m00"] < 100:
+                        direction = None
                     else:
-                        direction = "Right"
-                    # 重心が四角形の中に収まっていれば direction を "Straight" に設定
-                    if red_ratio > self.red_ratio_threshold:
-                        direction = "stop"
-                    elif (
-                        square_x < cX < square_x + square_size
-                        and square_y < cY < square_y + square_size
-                    ):
-                        direction = "Straight"
+                        if cX < frame_width // 2:
+                            direction = "Left"
+                        else:
+                            direction = "Right"
+                        # 重心が四角形の中に収まっていれば direction を "Straight" に設定
+                        if red_ratio > self.red_ratio_threshold:
+                            direction = "stop"
+                        elif (
+                            square_x < cX < square_x + square_size
+                            and square_y < cY < square_y + square_size
+                        ):
+                            direction = "Straight"
 
-                    # 方向を表示
-                    cv2.putText(
-                        frame,
-                        direction,
-                        (cX - 50, cY - 50),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1,
-                        self.tracking_color,
-                        2,
-                    )
+                    if direction is not None:
+                        # 重心を示す円を描画
+                        cv2.circle(frame, (cX, cY), 5, self.tracking_color, -1)
+                        # 方向を表示
+                        cv2.putText(
+                            frame,
+                            direction,
+                            (cX - 50, cY - 50),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            self.tracking_color,
+                            2,
+                        )
 
                     # 結果
-                    print("進行方向：" + direction)
+                    print("進行方向：" + str(direction))
                     time.sleep(0.25)
 
             # 結果を表示
